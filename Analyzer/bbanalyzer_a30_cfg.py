@@ -25,6 +25,7 @@ process.bcRatio = cms.EDProducer("GenJetBCEnergyRatio",
 
 process.bba = cms.EDAnalyzer("BBAAnalyzer",
    outFileName = cms.string('/afs/cern.ch/user/k/ktos/BBA/CMSSW_7_1_11_patch2/src/BBA/Analyzer/BSUB/DIRNAME/DIRNAME.root'),
+   jetOutputFileName = cms.string('/afs/cern.ch/user/k/ktos/BBA/CMSSW_7_1_11_patch2/src/BBA/Analyzer/BSUB/dirname/jetOutput.out'),
    genParticleTag = cms.InputTag("genParticles"),
    genJetTag = cms.InputTag("ak5GenJets"),
    bRatioTag = cms.InputTag("bcRatio","bRatioCollection","BBA"),
