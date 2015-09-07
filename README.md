@@ -61,13 +61,15 @@ RUNNING THE ANALYZER
 
 3) Change the paths on line 4 and 8 of SUBMIT.sh to the path of your current directory.
 
-4) Execute: ./analyze.sh bbanalyzer_cfg SUBMIT TEST 8nh  #TEST is just the name of whatever directory you want to use.
+4) Execute: ./analyze.sh bbanalyzer_cfg SUBMIT TEST yes 1nd  #TEST is just the name of whatever directory you want to use.
 
    	Notes:  bbanalyzer_cfg ->cfg file
 
 		SUBMIT -> script
 
 		TEST -> Name of Dir. Call it whatever you want
+
+		yes -> if you want all the output of the bJet matching, put yes, otherwise no.
 
 		8nh -> bsub queue
 
