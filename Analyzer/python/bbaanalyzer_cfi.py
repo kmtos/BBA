@@ -8,7 +8,8 @@ commonGenTauDecayIDPSet = cms.PSet(momPDGID = cms.vint32(36),
                                    totalPTMin = cms.double(0.0))
 
 BBAAnalyzer = cms.EDAnalyzer('BBAAnalyzer',
-    outFileName = cms.string('BBAAnalyzer_Histo_a30_v1.root'),
+    outFileName = cms.string('/afs/cern.ch/user/k/ktos/BBA/CMSSW_7_1_11_patch2/src/BBA/Analyzer/BSUB/DIRNAME/DIRNAME.root'),
+    jetOutputFileName = cms.string('/afs/cern.ch/user/k/ktos/BBA/CMSSW_7_1_11_patch2/src/BBA/Analyzer/BSUB/DIRNAME/jetOutput.out'),
     genParticleTag = cms.InputTag("genParticles"),
     genJetTag = cms.InputTag("a5kGenJets"),
     bRatioTag = cms.InputTag("bRatioCollection"),

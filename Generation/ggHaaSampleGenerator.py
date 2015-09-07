@@ -24,7 +24,7 @@ process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 process.maxEvents = cms.untracked.PSet(
-        input = cms.untracked.int32(10) #Changed from 2141 to 300 since thats what was in SignalSampleGenerator.py
+        input = cms.untracked.int32(300) #Changed from 2141 to 300 since thats what was in SignalSampleGenerator.py
 )
 
 #so the seed is randomized for each job

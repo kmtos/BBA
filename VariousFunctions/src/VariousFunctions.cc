@@ -429,6 +429,7 @@ double VariousFunctions::getDiTauDR(const reco::GenParticleRef& tau1Ref, const r
   reco::LeafCandidate::LorentzVector tau1P4 = sumTauP4(tau1Ref, tau1DecayMode, piDecay), tau2P4 = VariousFunctions::sumTauP4(tau2Ref, tau2DecayMode, piDecay);
   double dPhi = reco::deltaPhi(tau1P4.Phi(), tau2P4.Phi() );
   double aDR = sqrt( (tau1P4.Eta() - tau2P4.Eta() )*(tau1P4.Eta() - tau2P4.Eta() )  +  (dPhi )*(dPhi ) );
+  std::cout << "eta1= " << tau1P4.Eta() << " eta2= " << tau2P4.Eta() << " phi1= " << tau1P4.Phi() << " phi2= " << tau2P4.Phi() << " dr= " << aDR << std::endl;
   return aDR;
 }//VariousFunctions::getDiTauDR
 
@@ -520,3 +521,25 @@ double* VariousFunctions::orderFour(const double o1, double const o2, const doub
 
  return a;
 }//VariousFunctions::orderFour
+
+
+void VariousFunctions::findAndPlotBMuons(const reco::GenParticleRef& bRef, const int treeDepth, TH1F* hist, const bool displayTree)
+{
+  for(unsigned int i = 0; i < bRef->numberOfDaughters(); i++)
+  {
+    reco::GenParticleRef childRef = bRef->daughterRef(i);
+    for(int j = 0; j < treeDepth; j++)
+      std::cout << "\t";
+    if(displayTree)
+      std::cout << "child #" << i << " has pdgId= " << childRef->pdgId() << " and has #" << childRef->numberOfDaughters() << " daughters." << std::endl;
+    if(childRef->numberOfDaughters() > 1 || VariousFunctions::findIfInDaughters(bRef, 5, true))
+      VariousFunctions::findAndPlotBMuons(childRef, treeDepth + 1, hist, displayTree);
+    if(fabs(childRef->pdgId() ) == 15 )
+    {
+      std::cout << "\t\t<----BMOUN----->" << std::endl;
+      hist->Fill(childRef->pt() );
+    }//if pdgid == 15
+  }//for i
+
+
+}//VariousFunctions::FindAndPlotBMuons

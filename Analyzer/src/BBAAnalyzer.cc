@@ -107,8 +107,14 @@ class BBAAnalyzer : public edm::EDAnalyzer {
       //pointer to output file object
       TFile* out_;
 
-      //name of output file
+      //openning the jet output file
+      ofstream jetOutput_;
+
+      //name of output root file
       std::string outFileName_;
+
+      //name of output jetOutput file
+      std::string jetOutputFileName_;
 
       //gen particle tag
       edm::InputTag genParticleTag_;
@@ -125,73 +131,37 @@ class BBAAnalyzer : public edm::EDAnalyzer {
       edm::Handle<JetBCEnergyRatioCollection>   theCratioValue;
 
       //Histiograms
-      TH1F* AMPart_;
       TH1F* BPtCut_;
-      TH1F* BRatioCut_;
+      TH1F* BPtMatchCut_;
       TH1F* TauPt_;
-      TH1F* TauEta_;
-
-      TH1F* BPt7575_;
-      TH1F* BPt5050_;
-      TH1F* BPt3333_;
-      TH1F* BPt2525_;
-      TH1F* BPt7550_;
-      TH1F* BPt7525_;
-      TH1F* BPt5025_;
-      TH1F* BPt3325_;
-
-      TH1F* BEta7575_;
-      TH1F* BEta5050_;
-      TH1F* BEta3333_;
-      TH1F* BEta2525_;
-      TH1F* BEta7550_;
-      TH1F* BEta7525_;
-      TH1F* BEta5025_;
-      TH1F* BEta3325_;
-
-      TH1F* BPhi7575_;
-      TH1F* BPhi5050_;
-      TH1F* BPhi3333_;
-      TH1F* BPhi2525_;
-      TH1F* BPhi7550_;
-      TH1F* BPhi7525_;
-      TH1F* BPhi5025_;
-      TH1F* BPhi3325_;
-
-      TH1F* BdR7575_;
-      TH1F* BdR5050_;
-      TH1F* BdR3333_;
-      TH1F* BdR2525_;
-      TH1F* BdR7550_;
-      TH1F* BdR7525_;
-      TH1F* BdR5025_;
-      TH1F* BdR3325_;
-
 
       TH1F* APt_;
-      TH1F* AEta_;
       TH1F* DiTauDR_; 
-      TH1F* BPt_;
-      TH1F* BEta_;
-      TH1F* BPhi_;
+      TH1F* BPtMatch_;
       TH1F* ABDR_;
-      TH1F* MuPtOfTauMuTauHad_;
-      TH1F* BPtTauMuTauHad_;
-      TH1F* DiBPtTauMuTauHad_;
-      TH1F* BRatio_;
+      TH1F* TauMuPt_;
+      TH1F* BPt_;
+      TH1F* BPtHigh_;
+      TH1F* BPtLow_;
+      TH1F* DiBPt_;
       TH1F* DRbPartbRatio_;
       TH1F* PtDiffbPartbRatio_;
       TH1F* BMuPt_;
+      TH1F* AMass_;
 
       TH2F* DiTauDRVsAPt_;
       TH2F* DiTauDRVsAEta_;
       TH2F* DiTauDRVsBPtLow_;
       TH2F* DiTauDRVsBPtHigh_;
+      TH2F* DiTauDRVsBPtBestMatch_;
+      TH2F* DiTauDRVsBPt2ndBestMatch_;
       TH2F* ABDRVsAPt_;
       TH2F* ABDRVsDiTauDR_;
 
-
       TH2F* SumBRatioVsBPartBRatiodR_;
+      TH1F* BRatiosWithLargeDR_;
+
+      TH1F* NEvents_;
 };
 
 //
@@ -207,6 +177,7 @@ class BBAAnalyzer : public edm::EDAnalyzer {
 //
 BBAAnalyzer::BBAAnalyzer(const edm::ParameterSet& iConfig):
   outFileName_(iConfig.getParameter<std::string>("outFileName")),
+  jetOutputFileName_(iConfig.getParameter<std::string>("jetOutputFileName")), 
   genParticleTag_(iConfig.getParameter<edm::InputTag>("genParticleTag")),
   genJetTag_(iConfig.getParameter<edm::InputTag>("genJetTag"))
 {
@@ -234,7 +205,8 @@ void BBAAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   edm::Handle<reco::GenParticleCollection> pGenParticles;
   iEvent.getByLabel(genParticleTag_, pGenParticles);
   std::cout << "\nTHIS IS A NEW EVENT" << std::endl;
-
+  NEvents_->Fill(0.01);
+  
   //Get gen jet collection
   edm::Handle<reco::GenJetCollection> pGenJets;
   iEvent.getByLabel(genJetTag_, pGenJets);
@@ -249,19 +221,20 @@ void BBAAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   double br1 = 0, br2 = 0, bcdiff1 = 0, bcdiff2 = 0;
   int Big1JetN=0, Big2JetN=0, i=0;
 
+  if (theBratioValue->size() < 1)
+    return ;
   JetBCEnergyRatioCollection::const_iterator initB = theBratioValue->begin();
   Jet *jet1 =  const_cast<Jet*>(&*(initB->first) ), *jet2 =  const_cast<Jet*>(&*(initB->first) );
   for (JetBCEnergyRatioCollection::const_iterator itB = theBratioValue->begin(); itB != theBratioValue->end(); itB++)
   {
     Jet *jetB = const_cast<Jet*>(&*(itB->first) );
     double cR = 0;
-std::cout << "\tJet #" << i << " has bRatio= " << itB->second << "\thas pt=" << jetB->et() << "\tphi=" << jetB->phi() << "\teta= " << jetB->eta() << std::endl;
+jetOutput_ << "\tJet #" << i << " has bRatio= " << itB->second << "\thas pt=" << jetB->et() << "\tphi=" << jetB->phi() << "\teta= " << jetB->eta() << std::endl;
     for (JetBCEnergyRatioCollection::const_iterator itC = theCratioValue->begin(); itC != theCratioValue->end(); itC++)
     {
       if(itB->first == itC->first)
         cR=itC->second;
     }//for
-
     if(itB->second > br1)
     {
       br2 = br1;
@@ -284,15 +257,14 @@ std::cout << "\tJet #" << i << " has bRatio= " << itB->second << "\thas pt=" << 
     i++;
   }//for
 
-   std::cout << "\tLargest bRatio= " << br1 << " is Jet #" << Big1JetN << " and has pt= " << jet1->et() << " and has eta=" << jet1->eta() << " and has phi= " << jet1->phi() << std::endl;
-   std::cout << "\tSecond Largest bRatio= " << br2 << " is Jet #" << Big2JetN << " and has pt= " << jet2->et() << " and has eta=" << jet2->eta() << " and has phi= " << jet2->phi() << std::endl;
-
+   jetOutput_ << "\tLargest bRatio= " << br1 << " is Jet #" << Big1JetN << " and has pt= " << jet1->et() << " and has eta=" << jet1->eta() << " and has phi= " << jet1->phi() << std::endl;
+   jetOutput_ << "\tSecond Largest bRatio= " << br2 << " is Jet #" << Big2JetN << " and has pt= " << jet2->et() << " and has eta=" << jet2->eta() << " and has phi= " << jet2->phi() << std::endl;
   //Cycling through all of the particles in each event
   for (reco::GenParticleCollection::const_iterator iGenParticle = pGenParticles->begin(); iGenParticle != pGenParticles->end(); ++iGenParticle)
   {
 
 //
-//This Next bit is the Tau Analysis Part
+//This Selects the taus and calculates their decay mode, their dR  and aVisibleP4
 //
     reco::LeafCandidate::LorentzVector tau1P4, tau2P4, aP4;
     if(iGenParticle->pdgId() == 36 && iGenParticle->numberOfDaughters() == 2 && fabs(iGenParticle->daughter(0)->pdgId()) == 15) //Finds an A that decays to two taus
@@ -311,10 +283,9 @@ std::cout << "\tJet #" << i << " has bRatio= " << itB->second << "\thas pt=" << 
 
       //Below I calculate the various tau and a1 quantities
       int tau1DecayMode = VariousFunctions::tauDecayMode(tau1Ref), tau2DecayMode = VariousFunctions::tauDecayMode(tau2Ref);
-      reco::LeafCandidate::LorentzVector aP4 = VariousFunctions::sumTauP4(tau1Ref, tau1DecayMode, true) + VariousFunctions::sumTauP4(tau2Ref, tau2DecayMode, true);
-      double diTauDR = VariousFunctions::getDiTauDR(tau1Ref, tau2Ref, true), aBDR = 0, aBbarDR = 0;
+      double diTauDR = VariousFunctions::getDiTauDR(tau1Ref, tau2Ref, true);
 //
-//This gets the bParticles
+//This gets the bParticles that are sisters to the a
 //
       reco::GenParticleRef mother = iGenParticle->motherRef(), bRef = iGenParticle->motherRef(), bbarRef = iGenParticle->motherRef();
       while(mother->pdgId() == 36)
@@ -327,32 +298,40 @@ std::cout << "\tmom pdgid=" << mother->pdgId() << "\tchild pdgid=" << child->pdg
 	  bRef = child;
 	if(child->pdgId() == -5 )
  	  bbarRef = child;
+        if(child->pdgId() == 36)
+	  AMass_->Fill(child->mass() );
       }//for
 
-      std::cout << "\tbRef: pdgId= " << bRef->pdgId() << "  pt= " << bRef->pt() << "  eta= " << bRef->eta() << "  phi= " << bRef->phi() << std::endl;
-      std::cout << "\tbbar: pdgId= " << bbarRef->pdgId() << "  pt= " << bbarRef->pt() << "  eta= " << bbarRef->eta() << "  phi= " << bbarRef->phi() << std::endl;
-      std::cout << "\tbjet1: \t pt= " << jet1->et() << "  eta=" << jet1->eta() << "  phi= " << jet1->phi() << std::endl;
-      std::cout << "\tbjet2: \t pt= " << jet2->et() << "  eta=" << jet2->eta() << "  phi= " << jet2->phi() << bcdiff2 << std::endl;
+//
+//This calculates the differences in the various pairings of bRef's and the jets with the largest bRatios
+//
 
-      //this calculates the many different delta phi, eta, r, pt between the 2 jets with highest bRatio and the 2 bParticles
+      jetOutput_ << "\tbRef: pdgId= " << bRef->pdgId() << "  pt= " << bRef->pt() << "  eta= " << bRef->eta() << "  phi= " << bRef->phi() << std::endl;
+      jetOutput_ << "\tbbar: pdgId= " << bbarRef->pdgId() << "  pt= " << bbarRef->pt() << "  eta= " << bbarRef->eta() << "  phi= " << bbarRef->phi() << std::endl;
+      jetOutput_ << "\tbjet1: \t pt= " << jet1->et() << "  eta=" << jet1->eta() << "  phi= " << jet1->phi() << std::endl;
+      jetOutput_ << "\tbjet2: \t pt= " << jet2->et() << "  eta=" << jet2->eta() << "  phi= " << jet2->phi() << bcdiff2 << std::endl;
+
       double b1pt = fabs(jet1->et() - bRef->pt() ), bbar1pt = fabs(jet1->et() - bbarRef->pt() ), b2pt = fabs(jet2->et() - bRef->pt() ), bbar2pt = fabs(jet2->et() - bbarRef->pt() );
       double b1eta = fabs(jet1->eta() - bRef->eta() ), bbar1eta = fabs(jet1->eta() - bbarRef->eta() ), b2eta = fabs(jet2->eta() - bRef->eta() ), bbar2eta = fabs(jet2->eta() - bbarRef->eta() );
       double b1phi = fabs(jet1->phi() - bRef->phi() ), bbar1phi = fabs(jet1->phi() - bbarRef->phi() ), b2phi = fabs(jet2->phi() - bRef->phi() ), bbar2phi = fabs(jet2->phi() - bbarRef->phi() );    
       double b1dr = sqrt( b1eta*b1eta + b1phi*b1phi), bbar1dr = sqrt( bbar1eta*bbar1eta + bbar1phi*bbar1phi ), b2dr = sqrt( b2eta*b2eta + b2phi*b2phi), bbar2dr = sqrt( bbar2eta*bbar2eta + bbar2phi*bbar2phi );
-      std::cout << "\t b1pt=" << b1pt << "  bbar1pt=" << bbar1pt << "  b2pt=" << b2pt << "  bbar2pt=" << bbar2pt << std::endl;
-      std::cout << "\t b1dr=" << b1dr << "  bbar1dr=" << bbar1dr << "  b2dr=" << b2dr << "  bbar2dr=" << bbar2dr << std::endl;
+      jetOutput_ << "\t b1pt=" << b1pt << "  bbar1pt=" << bbar1pt << "  b2pt=" << b2pt << "  bbar2pt=" << bbar2pt << std::endl;
+      jetOutput_ << "\t b1dr=" << b1dr << "  bbar1dr=" << bbar1dr << "  b2dr=" << b2dr << "  bbar2dr=" << bbar2dr << std::endl;
       double dr1corr = 0, dr2corr = 0, pt1corr = 0, pt2corr = 0;
 
-      if(b1dr > b2dr)  //b2dr smaller
+//
+//This tries to Match the jets with the largest bRatio to the correct bRef by finding the smallest dR of the pairings
+//
+      if(b1dr >= b2dr)  //b2dr smaller
       {
-        if(bbar1dr > bbar2dr)  //bbar2dr smaller
+        if(bbar1dr >= bbar2dr)  //bbar2dr smaller
 	{
-	  if(bbar2dr > b2dr)  //b2dr smallest of 4
+	  if(bbar2dr >= b2dr)  //b2dr smallest of 4
 	  {
-	    dr1corr = b2dr;
-	    dr2corr = bbar1dr;
-	    pt1corr = b2pt;
-	    pt2corr = bbar1pt;	    
+	    dr1corr = bbar1dr;
+	    dr2corr = b2dr;
+	    pt1corr = bbar1pt;
+	    pt2corr = b2pt;	    
 	  }//if bbar b
 	  else  //bbar2dr smallest of 4
 	  {
@@ -364,10 +343,10 @@ std::cout << "\tmom pdgid=" << mother->pdgId() << "\tchild pdgid=" << child->pdg
 	}//if bbar
 	else  //b2dr and bbar1dr are smallest and that's good
 	{
-          dr1corr = b2dr;
-          dr2corr = bbar1dr;
-          pt1corr = b2pt;
-          pt2corr = bbar1pt;	  
+          dr1corr = bbar1dr;
+          dr2corr = b2dr;
+          pt1corr = bbar1pt;
+          pt2corr = b2pt;	  
 	}//else
       }//if bar
       else  //b1dr smaller
@@ -383,10 +362,10 @@ std::cout << "\tmom pdgid=" << mother->pdgId() << "\tchild pdgid=" << child->pdg
           }//if bbar b
           else  //bbar1dr is smallest of 4
           {
-            dr1corr = b2dr;
-            dr2corr = bbar1dr;
-            pt1corr = b2pt;
-            pt2corr = bbar1pt;
+            dr1corr = bbar1dr;
+            dr2corr = b2dr;
+            pt1corr = bbar1pt;
+            pt2corr = b2pt;
           }
         }//if bbar
         else   // b1dr bbar2dr are smallest and that's good
@@ -398,118 +377,12 @@ std::cout << "\tmom pdgid=" << mother->pdgId() << "\tchild pdgid=" << child->pdg
         }//else
       }//else
 
-
 //
-//This is the end of my calculations and is the start of the plotting
+//This is the end of my calculations and is the start of the plotting. I select only tau_mu * tau_Had Events
 //
       if( (tau2DecayMode == 7 && tau1DecayMode <=4) || (tau1DecayMode == 7 && tau2DecayMode <=4) )
       {
-        BRatioCut_->Fill(0);
-        if(br1 > .75 && br2 > .75 )
-        {
-          BRatioCut_->Fill(1);
-          BPt7575_->Fill(jet1->et() );
-          BEta7575_->Fill(jet1->eta() );
-          BPhi7575_->Fill(jet1->phi() );
-   	  BdR7575_->Fill(dr1corr);
-          BPt7575_->Fill(jet2->et() );
-          BEta7575_->Fill(jet2->eta() );
-          BPhi7575_->Fill(jet2->phi() );
-	  BdR7575_->Fill(dr2corr);
-        }
-        if(br1 > .5 && br2 > .5 )
-        {
-          BRatioCut_->Fill(2);
-          BPt5050_->Fill(jet1->et() );
-          BEta5050_->Fill(jet1->eta() );
-          BPhi5050_->Fill(jet1->phi() );
-	  BdR5050_->Fill(dr1corr);
-          BPt5050_->Fill(jet2->et() );
-          BEta5050_->Fill(jet2->eta() );
-          BPhi5050_->Fill(jet2->phi() );
-	  BdR5050_->Fill(dr2corr);
-        }
-        if(br1 > .33 && br2 > .33 )
-        {
-          BRatioCut_->Fill(3);
-          BPt3333_->Fill(jet1->et() );
-          BEta3333_->Fill(jet1->eta() );
-          BPhi3333_->Fill(jet1->phi() );
-	  BdR3333_->Fill(dr1corr);
-          BPt3333_->Fill(jet2->et() );
-          BEta3333_->Fill(jet2->eta() );
-          BPhi3333_->Fill(jet2->phi() );
-	  BdR3333_->Fill(dr2corr);
-        }
-        if(br1 > .25 && br2 > .25 )
-        {
-          BRatioCut_->Fill(4);
-          BPt2525_->Fill(jet1->et() );
-          BEta2525_->Fill(jet1->eta() );
-          BPhi2525_->Fill(jet1->phi() );
-	  BdR2525_->Fill(dr1corr);
-          BPt2525_->Fill(jet2->et() );
-          BEta2525_->Fill(jet2->eta() );
-          BPhi2525_->Fill(jet2->phi() );
-	  BdR2525_->Fill(dr2corr);
-        }
-        if( (br1 > .75 && br2 > .5 ) || (br1 > .5 && br2 > .75 ) )
-        {
-          BRatioCut_->Fill(5);
-          BPt7550_->Fill(jet1->et() );
-          BEta7550_->Fill(jet1->eta() );
-          BPhi7550_->Fill(jet1->phi() );
-	  BdR7550_->Fill(dr1corr);
-          BPt7550_->Fill(jet2->et() );
-          BEta7550_->Fill(jet2->eta() );
-          BPhi7550_->Fill(jet2->phi() );
-   	  BdR7550_->Fill(dr2corr);
-        }
-        if( (br1 > .25 && br2 > .75 ) || (br1 > .75 && br2 > .25 ) )
-        {
-          BRatioCut_->Fill(6);
-          BPt7525_->Fill(jet1->et() );
-          BEta7525_->Fill(jet1->eta() );
-          BPhi7525_->Fill(jet1->phi() );
-	  BdR7525_->Fill(dr1corr);
-          BPt7525_->Fill(jet2->et() );
-          BEta7525_->Fill(jet2->eta() );
-          BPhi7525_->Fill(jet2->phi() );
-	  BdR7525_->Fill(dr2corr);
-        }
-        if( (br1 > .25 && br2 > .5 ) || (br1 > .5 && br2 > .25 ) )
-        {
-          BRatioCut_->Fill(7);
-          BPt5025_->Fill(jet1->et() );
-          BEta5025_->Fill(jet1->eta() );
-          BPhi5025_->Fill(jet1->phi() );
-	  BdR5025_->Fill(dr1corr);
-          BPt5025_->Fill(jet2->et() );
-          BEta5025_->Fill(jet2->eta() );
-          BPhi5025_->Fill(jet2->phi() );
-	  BdR5025_->Fill(dr2corr);
-        }
-        if( (br1 > .25 && br2 > .33 ) || (br1 > .33 && br2 > .25 ) )
-        {
-          BRatioCut_->Fill(8);
-          BPt3325_->Fill(jet1->et() );
-          BEta3325_->Fill(jet1->eta() );
-          BPhi3325_->Fill(jet1->phi() );
-	  BdR3325_->Fill(dr1corr);
-          BPt3325_->Fill(jet2->et() );
-          BEta3325_->Fill(jet2->eta() );
-          BPhi3325_->Fill(jet2->phi() );
-	  BdR3325_->Fill(dr2corr);
-        }
-        BPt_->Fill(jet1->et() );
-        BPt_->Fill(jet2->et() );
-        BEta_->Fill(jet1->eta() );
-        BEta_->Fill(jet2->eta() );
-        BPhi_->Fill(jet1->phi() );
-        BPhi_->Fill(jet2->phi() );
-        BRatio_->Fill(br1);
-        BRatio_->Fill(br2);
-        if(br1 + br2 > 1.15)
+        if(br1 > .1 && br2 > .1) // This cut gets rid of the very poor pairings by not using any of the largest bRatio jets with a very low bRatio
 	{
           SumBRatioVsBPartBRatiodR_->Fill(br1 + br2, dr1corr);
           SumBRatioVsBPartBRatiodR_->Fill(br1 + br2, dr2corr);
@@ -517,51 +390,44 @@ std::cout << "\tmom pdgid=" << mother->pdgId() << "\tchild pdgid=" << child->pdg
           DRbPartbRatio_->Fill(dr2corr);
           PtDiffbPartbRatio_->Fill(pt1corr);
           PtDiffbPartbRatio_->Fill(pt2corr);
+	  //The next two plots are for looking at the bRatios of jets that pass the bRatio > .1 cut and still have a large dR between it and it's matched bRef
+ 	  if(dr1corr > 1.5)
+	    BRatiosWithLargeDR_->Fill(br1);
+  	  if(dr2corr > 1.5)
+            BRatiosWithLargeDR_->Fill(br2);
+	  //The proceeding if statement selects events that have at least 1 good bRef matching, via small dR, and plots the Pt_b
+          if(dr1corr < 1 || dr2corr < 1)
+ 	  {
+	    if(dr1corr < 1)//Only Fills if a good b match
+	      BPtMatch_->Fill(jet1->et() );
+	    if(dr2corr < 1)//Only Fills itf a good b match
+	      BPtMatch_->Fill(jet2->et() );
+	    if( dr1corr > dr2corr)
+	    {
+	      DiTauDRVsBPtBestMatch_->Fill(diTauDR, jet2->et() );
+              DiTauDRVsBPt2ndBestMatch_->Fill(diTauDR, jet1->et() );
+            }//if dr1corr > dr2corr
+            if( dr1corr < dr2corr)
+	    {
+              DiTauDRVsBPtBestMatch_->Fill(diTauDR, jet1->et() );
+              DiTauDRVsBPt2ndBestMatch_->Fill(diTauDR, jet2->et() );
+	    }//if dr1corr < dr2corr
+            //This counts the number of events with at least 1 matched bRef with a single jet above the given values
+            BPtMatchCut_->Fill(0);
+            if(jet1->et() > 100 || jet2->et() > 100 )
+              BPtMatchCut_->Fill(4);
+            if(jet1->et() > 80 || jet2->et() > 80)
+              BPtMatchCut_->Fill(3);
+            if(jet1->et() > 60 || jet2->et() > 60)
+              BPtMatchCut_->Fill(2);
+            if(jet1->et() > 40 || jet2->et() > 40)
+              BPtMatchCut_->Fill(1);
+          }//if dr1corr < 1 || dr2corr < 1
 	}//if br+ br2 > .05
 
-          //This looks for a "b" in their refs to get final decay bit. It also looks for the b muon along the way. 
-        while(VariousFunctions::findIfInDaughters(bRef, 5, true) || VariousFunctions::findIfInDaughters(bbarRef, 5, true))
-        {
-          for(unsigned int i=0; i<bRef->numberOfDaughters(); i++)
-            std::cout << "\t\tbRef child #" << i << " has pdgid= " << bRef->daughter(i)->pdgId() << std::endl;
-          for(unsigned int i=0; i<bbarRef->numberOfDaughters(); i++)
-            std::cout << "\t\tbbarRef child #" << i << " has pdgid= " << bbarRef->daughter(i)->pdgId() << std::endl;
-
-          //Looks for muons along the way
-          if(VariousFunctions::findIfInDaughters(bRef, 13, true))
-          {
-            reco::GenParticleRef bMuRef = VariousFunctions::findDaughterInDaughters(bRef, 13, true);
-            BMuPt_->Fill(bMuRef->pt() );
-          }//findIfInDaughters(bRef, 13, true)
-          if(VariousFunctions::findIfInDaughters(bbarRef, 13, true))
-          {
-            reco::GenParticleRef bbarMuRef = VariousFunctions::findDaughterInDaughters(bbarRef, 13, true);
-            BMuPt_->Fill(bbarMuRef->pt() );
-          }//findIfInDaughters(bRef, 13, true)
-
-          //assigns "b" daughter to bRef
-          if(VariousFunctions::findIfInDaughters(bRef, 5, true))
-            bRef = VariousFunctions::findDaughterInDaughters(bRef, 5, true);
-          if(VariousFunctions::findIfInDaughters(bbarRef, 5, true))
-            bbarRef = VariousFunctions::findDaughterInDaughters(bbarRef, 5, true);
-        }//while
-
-       for(unsigned int i=0; i<bRef->numberOfDaughters(); i++)
-         std::cout << "\t\t\nbRef child #" << i << "has pdgid= " << bRef->daughter(i)->pdgId() << std::endl;
-       for(unsigned int i=0; i<bbarRef->numberOfDaughters(); i++)
-         std::cout << "\t\tbbarRef child #" << i << "has pdgid= " << bbarRef->daughter(i)->pdgId() << std::endl;
-
-        //Looks for muon in final b decay
-        if(VariousFunctions::findIfInDaughters(bRef, 13, true))
-        {
-          reco::GenParticleRef bMuRef = VariousFunctions::findDaughterInDaughters(bRef, 13, true);
-          BMuPt_->Fill(bMuRef->pt() );
-        }//findIfInDaughters(bRef, 13, true)
-        if(VariousFunctions::findIfInDaughters(bbarRef, 13, true))
-        {
-          reco::GenParticleRef bbarMuRef = VariousFunctions::findDaughterInDaughters(bbarRef, 13, true);
-          BMuPt_->Fill(bbarMuRef->pt() );
-        }//if
+        //This recursively searches the bRef for muons and plots their pt
+        VariousFunctions::findAndPlotBMuons(bRef, 1, BMuPt_, false);
+        VariousFunctions::findAndPlotBMuons(bbarRef, 1, BMuPt_, false);
 
         //This counts the events with a single jet above the given values
         BPtCut_->Fill(0);
@@ -577,49 +443,45 @@ std::cout << "\tmom pdgid=" << mother->pdgId() << "\tchild pdgid=" << child->pdg
         //This plots the a, tau, and a-b comparison quantities
         tau1P4 = VariousFunctions::sumTauP4(tau1Ref, tau1DecayMode, true);
         TauPt_->Fill(tau1P4.Pt() );
-        TauEta_->Fill(tau1P4.Eta() );
         tau2P4 = VariousFunctions::sumTauP4(tau2Ref, tau2DecayMode, true);
         TauPt_->Fill(tau2P4.Pt() );
-        TauEta_->Fill(tau2P4.Eta() );
-        aBDR = VariousFunctions::getABDR(jet1->eta(), jet1->phi(), tau1Ref, tau2Ref, true);
-        aBbarDR = VariousFunctions::getABDR(jet2->eta(), jet2->phi(), tau1Ref, tau2Ref, true);
-        aP4 = tau1P4 +tau2P4;
+        double aB1DR = VariousFunctions::getABDR(jet1->eta(), jet1->phi(), tau1Ref, tau2Ref, true);
+        double aB2DR = VariousFunctions::getABDR(jet2->eta(), jet2->phi(), tau1Ref, tau2Ref, true);
+        aP4 = tau1P4 + tau2P4;
         APt_->Fill(aP4.Pt() );
-        AEta_->Fill(aP4.Eta() );
         DiTauDR_->Fill(diTauDR);
-        ABDR_->Fill(aBDR);
-        ABDR_->Fill(aBbarDR);
+        ABDR_->Fill(aB1DR);
+        ABDR_->Fill(aB2DR);
         DiTauDRVsAPt_->Fill(diTauDR, aP4.Pt());
         DiTauDRVsAEta_->Fill(diTauDR, aP4.Eta() );
         if(jet1->et() > jet2->et() )
         {
-          DiTauDRVsBPtLow_->Fill(diTauDR, jet1->et() );
-          DiTauDRVsBPtHigh_->Fill(diTauDR, jet2->et() );
-        }//if bP4.Pt() > bbarP4.Pt()
+          DiTauDRVsBPtLow_->Fill(diTauDR, jet2->et() );
+          DiTauDRVsBPtHigh_->Fill(diTauDR, jet1->et() );
+	  BPtHigh_->Fill(jet1->et() );
+	  BPtLow_->Fill(jet2->et() );
+        }//if jet1->et() > jet2->et()
         else
         {
-          DiTauDRVsBPtLow_->Fill(diTauDR, jet2->et() );
+          DiTauDRVsBPtLow_->Fill(diTauDR, jet1->et() );
           DiTauDRVsBPtHigh_->Fill(diTauDR, jet2->et() );
+          BPtHigh_->Fill(jet2->et() );
+          BPtLow_->Fill(jet1->et() );
         }//else
-        ABDRVsAPt_->Fill(aBDR, aP4.Pt());
-        ABDRVsAPt_->Fill(aBbarDR, aP4.Pt());
-        ABDRVsDiTauDR_->Fill(aBDR, diTauDR);
-        AMPart_->Fill(iGenParticle->mass() );
-        if(tau2DecayMode == 7 && tau1DecayMode <= 4)
-        { 
-          MuPtOfTauMuTauHad_->Fill(tau2P4.Pt() );
-          BPtTauMuTauHad_->Fill(jet1->et() );
-          BPtTauMuTauHad_->Fill(jet2->et() );
-          DiBPtTauMuTauHad_->Fill(jet1->et() + jet2->et() );
-        }//if
-        if(tau2DecayMode <= 4 && tau1DecayMode == 7)
-        {
-          MuPtOfTauMuTauHad_->Fill(tau1P4.Pt() );
-          BPtTauMuTauHad_->Fill(jet1->et() );
-          BPtTauMuTauHad_->Fill(jet2->et() );
-          DiBPtTauMuTauHad_->Fill(jet1->et() + jet2->et() );
-        }//if
-
+        ABDRVsAPt_->Fill(aB1DR, aP4.Pt());
+        ABDRVsAPt_->Fill(aB2DR, aP4.Pt());
+        ABDRVsDiTauDR_->Fill(aB1DR, diTauDR);
+        ABDRVsDiTauDR_->Fill(aB2DR, diTauDR);
+	if(tau1DecayMode == 7)
+          TauMuPt_->Fill(tau1P4.Pt() );
+	if(tau2DecayMode == 7)
+          TauMuPt_->Fill(tau2P4.Pt() );
+        BPt_->Fill(jet1->et() );
+        BPt_->Fill(jet2->et() );
+        DiBPt_->Fill(jet1->et() + jet2->et() );
+        BPt_->Fill(jet1->et() );
+        BPt_->Fill(jet2->et() );
+        DiBPt_->Fill(jet1->et() + jet2->et() );
 
       }//Tau_mu+tau_had decay     
 
@@ -632,76 +494,44 @@ std::cout << "\tmom pdgid=" << mother->pdgId() << "\tchild pdgid=" << child->pdg
 // ------------ method called once each job just before starting event loop  ------------
 void BBAAnalyzer::beginJob()
 {
+  std::cout << "Begin Job" << std::endl;
+
   //Open output file
   out_ = new TFile(outFileName_.c_str(), "RECREATE");
+  jetOutput_.open (jetOutputFileName_.c_str());
 
   //Book histograms
-  AMPart_ = new TH1F("AMPart", "", 101, -.5, 100.5);
   BPtCut_ = new TH1F("BPtCut", "", 5, -.5, 4.5);
-  BRatioCut_ = new TH1F("BRatioCut", "", 9, -.5, 8.5);
+  BPtMatchCut_ = new TH1F("BPtMatchCut", "", 5, -.5, 4.5);
   TauPt_ = new TH1F("TauPt", "", 50, 0, 50);
-  TauEta_ = new TH1F("TauEta", "", 50, -10, 10);
-
-  BPt7575_ = new TH1F("BPt7575", "", 50 , 0, 40);
-  BPt5050_ = new TH1F("BPt5050", "", 50 , 0, 40);
-  BPt3333_ = new TH1F("BPt3333", "", 50 , 0, 40);
-  BPt2525_ = new TH1F("BPt2525", "", 50 , 0, 40);
-  BPt7550_ = new TH1F("BPt7550", "", 50 , 0, 40);
-  BPt7525_ = new TH1F("BPt7525", "", 50 , 0, 40);
-  BPt5025_ = new TH1F("BPt5025", "", 50 , 0, 40);
-  BPt3325_ = new TH1F("BPt3325", "", 50 , 0, 40);
-
-  BEta7575_ = new TH1F("BEta7575", "", 50 , -8, 8);
-  BEta5050_ = new TH1F("BEta5050", "", 50 , -8, 8);
-  BEta3333_ = new TH1F("BEta3333", "", 50 , -8, 8);
-  BEta2525_ = new TH1F("BEta2525", "", 50 , -8, 8);
-  BEta7550_ = new TH1F("BEta7550", "", 50 , -8, 8);
-  BEta7525_ = new TH1F("BEta7525", "", 50 , -8, 8);
-  BEta5025_ = new TH1F("BEta5025", "", 50 , -8, 8);
-  BEta3325_ = new TH1F("BEta3325", "", 50 , -8, 8);
-
-  BPhi7575_ = new TH1F("BPhi7575", "", 50 , -3.5, 3.5);
-  BPhi5050_ = new TH1F("BPhi5050", "", 50 , -3.5, 3.5);
-  BPhi3333_ = new TH1F("BPhi3333", "", 50 , -3.5, 3.5);
-  BPhi2525_ = new TH1F("BPhi2525", "", 50 , -3.5, 3.5);
-  BPhi7550_ = new TH1F("BPhi7550", "", 50 , -3.5, 3.5);
-  BPhi7525_ = new TH1F("BPhi7525", "", 50 , -3.5, 3.5);
-  BPhi5025_ = new TH1F("BPhi5025", "", 50 , -3.5, 3.5);
-  BPhi3325_ = new TH1F("BPhi3325", "", 50 , -3.5, 3.5);
-
-  BdR7575_ = new TH1F("BdR7575", "", 50 , 0, 15);
-  BdR5050_ = new TH1F("BdR5050", "", 50 , 0, 15);
-  BdR3333_ = new TH1F("BdR3333", "", 50 , 0, 15);
-  BdR2525_ = new TH1F("BdR2525", "", 50 , 0, 15);
-  BdR7550_ = new TH1F("BdR7550", "", 50 , 0, 15);
-  BdR7525_ = new TH1F("BdR7525", "", 50 , 0, 15);
-  BdR5025_ = new TH1F("BdR5025", "", 50 , 0, 15);
-  BdR3325_ = new TH1F("BdR3325", "", 50 , 0, 15);
-
 
   APt_ = new TH1F("APt", "", 100, 0, 100);
-  AEta_ = new TH1F("AEta", "", 50, -6, 6);
-  DiTauDR_ = new TH1F("DiTauDR", "", 50, 0, 20);
-  BPt_ = new TH1F("BPt", "", 50, 0, 40);
-  BEta_ = new TH1F("BEta", "", 50, -7, 7);
-  BPhi_ = new TH1F("BPhi", "", 50, -3.2, 3.2);
-  ABDR_ = new TH1F("ABDR", "", 100, -1, 20);
-  MuPtOfTauMuTauHad_ = new TH1F("MuPtOfTauMuTauHad", "", 50, 0, 50);
-  BPtTauMuTauHad_ = new TH1F("BPtTauMuTauHad", "", 50, 0, 50);
-  DiBPtTauMuTauHad_ = new TH1F("DiBPtTauMuTauHad", "", 50, 0, 100);
-  BRatio_ = new TH1F("BRatio", "", 51, 0, 1);
-  DRbPartbRatio_ = new TH1F("DRbPartbRatio", "", 51, 0, 10);
-  PtDiffbPartbRatio_ = new TH1F("PtDiffbPartbRatio", "", 51, 0, 40);
-  BMuPt_ = new TH1F("BMuPt", "", 51, 0, 40);
+  DiTauDR_ = new TH1F("DiTauDR", "", 48, 0, 12);
+  BPtMatch_ = new TH1F("BPtMatch", "", 80, 0, 80);
+  ABDR_ = new TH1F("ABDR", "", 100, 0, 15);
+  TauMuPt_ = new TH1F("TauMuPt", "", 50, 0, 50);
+  BPt_ = new TH1F("BPt", "", 80, 0, 80);
+  BPtHigh_ = new TH1F("BPtHigh", "", 80, 0, 80);
+  BPtLow_ = new TH1F("BPtLow", "", 80, 0, 80);
+  DiBPt_ = new TH1F("DiBPt", "", 200, 0, 200);
+  DRbPartbRatio_ = new TH1F("DRbPartbRatio", "", 50, 0, 10);
+  PtDiffbPartbRatio_ = new TH1F("PtDiffbPartbRatio", "", 50, 0, 40);
+  BMuPt_ = new TH1F("BMuPt", "", 80, 0, 40);
+  AMass_ = new TH1F("AMass", "", 80, 0, 80);
 
   DiTauDRVsAPt_ = new TH2F("DiTauDRVsAPt", "", 50, 0.0, 10.0, 50, 0.0, 80.0);
   DiTauDRVsAEta_ = new TH2F("DiTauDRVsAEta", "", 50, 0.0, 10.0, 50, -8.0, 8.0);
   DiTauDRVsBPtLow_ = new TH2F("DiTauDRVsBPtLow", "", 50, 0.0, 10.0, 100, 0, 100.0);
   DiTauDRVsBPtHigh_ = new TH2F("DiTauDRVsBPtHigh", "", 50, 0.0, 10.0, 100, 0, 100.0);
-  ABDRVsAPt_ = new TH2F("ABDRVsAPt", "", 50, -1.0, 15.0, 50, 0.0, 30.0);
-  ABDRVsDiTauDR_ = new TH2F("ABDRVsDiTauDR", "", 50, -1.0, 15.0, 50, 0.0, 6.0);
+  DiTauDRVsBPtBestMatch_ = new TH2F("DiTauDRVsBPtBestMatch", "", 50, 0.0, 10.0, 100, 0, 100.0);
+  DiTauDRVsBPt2ndBestMatch_ = new TH2F("DiTauDRVsBPt2ndBestMatch", "", 50, 0.0, 10.0, 100, 0, 100.0);
+  ABDRVsAPt_ = new TH2F("ABDRVsAPt", "", 50, 0, 15.0, 50, 0.0, 60.0);
+  ABDRVsDiTauDR_ = new TH2F("ABDRVsDiTauDR", "", 50, 0, 15.0, 50, 0.0, 6.0);
  
   SumBRatioVsBPartBRatiodR_ = new TH2F("SumBRatioVsBPartBRatiodR", "", 50, 0, 2.0, 50, 0.0, 12.0);
+  BRatiosWithLargeDR_ = new TH1F("BRatiosWithLargeDR", "", 50, 0, 1.0);
+
+  NEvents_ = new TH1F("NEvents", "", 50, 0, 1.0);
  
   BPtCut_->GetXaxis()->SetBinLabel(1, "Total");
   BPtCut_->GetXaxis()->SetBinLabel(2, ">40");
@@ -709,151 +539,77 @@ void BBAAnalyzer::beginJob()
   BPtCut_->GetXaxis()->SetBinLabel(4, ">80");
   BPtCut_->GetXaxis()->SetBinLabel(5, ">100");
 
-  BRatioCut_->GetXaxis()->SetBinLabel(1, "Total");
-  BRatioCut_->GetXaxis()->SetBinLabel(2, ".75 .75");
-  BRatioCut_->GetXaxis()->SetBinLabel(3, ".5 .5");
-  BRatioCut_->GetXaxis()->SetBinLabel(4, ".33 .33");
-  BRatioCut_->GetXaxis()->SetBinLabel(5, ".25 .25");
-  BRatioCut_->GetXaxis()->SetBinLabel(6, ".75 .5");
-  BRatioCut_->GetXaxis()->SetBinLabel(7, ".75 .25");
-  BRatioCut_->GetXaxis()->SetBinLabel(8, ".5 .25");
-  BRatioCut_->GetXaxis()->SetBinLabel(9, ".33 .25");
+  BPtMatchCut_->GetXaxis()->SetBinLabel(1, "Total");
+  BPtMatchCut_->GetXaxis()->SetBinLabel(2, ">40");
+  BPtMatchCut_->GetXaxis()->SetBinLabel(3, ">60");
+  BPtMatchCut_->GetXaxis()->SetBinLabel(4, ">80");
+  BPtMatchCut_->GetXaxis()->SetBinLabel(5, ">100");
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
 void BBAAnalyzer::endJob()
 {
 
-for(int i=0; i<10; i++)
-  std::cout << "Bin #" << i << " has " << BRatioCut_->GetBinContent(i) << " counts." << std::endl;
+
+  jetOutput_.close();
+
+  for(int i=0; i<6; i++)
+    cout << "BPtCut:  Bin #" << i << " has a count of " << BPtCut_->GetBinContent(i) << std::endl;
+  for(int i=0; i<6; i++) 
+    cout << "BPtMatchCut:  BIN #" << i << " has a count of " << BPtMatchCut_->GetBinContent(i) << std::endl;
 
   //Make the Canvases
-  TCanvas AMPartCanvas("AMPart", "", 600, 600);
   TCanvas BPtCutCanvas("BPtCut", "", 600, 600);
-  TCanvas BRatioCutCanvas("BRatioCut", "", 600, 600);
+  TCanvas BPtMatchCutCanvas("BPtMatchCut", "", 600, 600);
   TCanvas TauPtCanvas("TauPt","",600,600);
-  TCanvas TauEtaCanvas("TauEta","",600,600);
-
-  TCanvas BPt7575Canvas("BPt7575","",600,600);
-  TCanvas BPt5050Canvas("BPt5050","",600,600);
-  TCanvas BPt3333Canvas("BPt3333","",600,600);
-  TCanvas BPt2525Canvas("BPt2525","",600,600);
-  TCanvas BPt7550Canvas("BPt7550","",600,600);
-  TCanvas BPt7525Canvas("BPt7525","",600,600);
-  TCanvas BPt5025Canvas("BPt5025","",600,600);
-  TCanvas BPt3325Canvas("BPt3325","",600,600);
-
-  TCanvas BEta7575Canvas("BEta7575","",600,600);
-  TCanvas BEta5050Canvas("BEta5050","",600,600);
-  TCanvas BEta3333Canvas("BEta3333","",600,600);
-  TCanvas BEta2525Canvas("BEta2525","",600,600);
-  TCanvas BEta7550Canvas("BEta7550","",600,600);
-  TCanvas BEta7525Canvas("BEta7525","",600,600);
-  TCanvas BEta5025Canvas("BEta5025","",600,600);
-  TCanvas BEta3325Canvas("BEta3325","",600,600);
-
-  TCanvas BPhi7575Canvas("BPhi7575","",600,600);
-  TCanvas BPhi5050Canvas("BPhi5050","",600,600);
-  TCanvas BPhi3333Canvas("BPhi3333","",600,600);
-  TCanvas BPhi2525Canvas("BPhi2525","",600,600);
-  TCanvas BPhi7550Canvas("BPhi7550","",600,600);
-  TCanvas BPhi7525Canvas("BPhi7525","",600,600);
-  TCanvas BPhi5025Canvas("BPhi5025","",600,600);
-  TCanvas BPhi3325Canvas("BPhi3325","",600,600);
-
-  TCanvas BdR7575Canvas("BdR7575","",600,600);
-  TCanvas BdR5050Canvas("BdR5050","",600,600);
-  TCanvas BdR3333Canvas("BdR3333","",600,600);
-  TCanvas BdR2525Canvas("BdR2525","",600,600);
-  TCanvas BdR7550Canvas("BdR7550","",600,600);
-  TCanvas BdR7525Canvas("BdR7525","",600,600);
-  TCanvas BdR5025Canvas("BdR5025","",600,600);
-  TCanvas BdR3325Canvas("BdR3325","",600,600);
-
 
   TCanvas APtCanvas("APt","",600,600);
-  TCanvas AEtaCanvas("AEta","",600,600);
   TCanvas DiTauDRCanvas("DiTauDR","",600,600);
-  TCanvas BPtCanvas("BPt","",600,600);
-  TCanvas BEtaCanvas("BEta","",600,600);
-  TCanvas BPhiCanvas("BPhi","",600,600);
+  TCanvas BPtMatchCanvas("BPtMatch","",600,600);
   TCanvas ABDRCanvas("ABDR","",600,600);
-  TCanvas MuPtOfTauMuTauHadCanvas("MuPtOfTauMuTauHad","",600,600);
-  TCanvas BPtTauMuTauHadCanvas("BPtTauMuTauHad","",600,600);
-  TCanvas DiBPtTauMuTauHadCanvas("DiBPtTauMuTauHad","",600,600);
-  TCanvas BRatioCanvas("BRatio","",600,600);
+  TCanvas TauMuPtCanvas("TauMuPt","",600,600);
+  TCanvas BPtCanvas("BPt","",600,600);
+  TCanvas BPtHighCanvas("BPtHigh","",600,600);
+  TCanvas BPtLowCanvas("BPtLow","",600,600);
+  TCanvas DiBPtCanvas("DiBPt","",600,600);
   TCanvas DRbPartbRatioCanvas("DRbPartbRatio","",600,600);
   TCanvas PtDiffbPartbRatioCanvas("PtDiffbPartbRatio","",600,600);
   TCanvas BMuPtCanvas("BMuPt","",600,600);
+  TCanvas AMassCanvas("AMass","",600,600);
 
   TCanvas DiTauDRVsAPtCanvas("DiTauDRVsAPt","" ,600,600);
   TCanvas DiTauDRVsAEtaCanvas("DiTauDRVsAEta","" ,600,600);
   TCanvas DiTauDRVsBPtLowCanvas("DiTauDRVsBPtLow","" ,600,600);
   TCanvas DiTauDRVsBPtHighCanvas("DiTauDRVsBPtHigh","" ,600,600);
+  TCanvas DiTauDRVsBPtBestMatchCanvas("DiTauDRVsBPtBestMatch","" ,600,600);
+  TCanvas DiTauDRVsBPt2ndBestMatchCanvas("DiTauDRVsBPt2ndBestMatch","" ,600,600);
   TCanvas ABDRVsAPtCanvas("ABDRVsAPt","",600,600);
   TCanvas ABDRVsDiTauDRCanvas("ABDRVsDiTauDR","",600,600);
 
   TCanvas SumBRatioVsBPartBRatiodRCanvas("SumBRatioVsBPartBRatiodR","",600,600);
+  TCanvas BRatiosWithLargeDRCanvas("BRatiosWithLargeDR","",600,600);
 
+  TCanvas NEventsCanvas("NEvents","",600,600);
 std::cout << "<----------------Declared Canvases-------------->" << std::endl;
 
   //Format the 1D plots and Draw (canvas, hist, grid, log y, log z, color, size, style, xAxisTitle, xTitleSize, xLabelSize, xTitleOffSet, yAxisTitle, yTitleSize, yLabelSize, yTitleOffset)
-  VariousFunctions::formatAndDrawCanvasAndHist1D(AMPartCanvas, AMPart_, 1, 0, 0, kBlack, 0.7, 20, "M(a1)", .04, .04, 1, "", .04, .04, 1, false);  
   VariousFunctions::formatAndDrawCanvasAndHist1D(BPtCutCanvas, BPtCut_, 1, 0, 0, kBlack, 0.7, 20, "", .04, .04, 1, "", .04, .04, 1, false); 
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BRatioCutCanvas, BRatioCut_, 1, 0, 0, kBlack, 0.7, 20, "", .04, .04, 1, "", .04, .04, 1, false);
+  VariousFunctions::formatAndDrawCanvasAndHist1D(BPtMatchCutCanvas, BPtMatchCut_, 1, 0, 0, kBlack, 0.7, 20, "", .04, .04, 1, "", .04, .04, 1, false);
   VariousFunctions::formatAndDrawCanvasAndHist1D(TauPtCanvas, TauPt_, 1, 0, 0, kBlack, 0.7, 20, "Pt(#tau)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(TauEtaCanvas, TauEta_, 1, 0, 0, kBlack, 0.7, 20, "#eta(#tau)", .04, .04, 1, "", .04, .04, 1, false);
-
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPt7575Canvas, BPt7575_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPt5050Canvas, BPt5050_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPt3333Canvas, BPt3333_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPt2525Canvas, BPt2525_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPt7550Canvas, BPt7550_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPt7525Canvas, BPt7525_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPt5025Canvas, BPt5025_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPt3325Canvas, BPt3325_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b)", .04, .04, 1, "", .04, .04, 1, false);
-
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BEta7575Canvas, BEta7575_, 1, 0, 0, kBlack, 0.7, 20, "Eta(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BEta5050Canvas, BEta5050_, 1, 0, 0, kBlack, 0.7, 20, "Eta(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BEta3333Canvas, BEta3333_, 1, 0, 0, kBlack, 0.7, 20, "Eta(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BEta2525Canvas, BEta2525_, 1, 0, 0, kBlack, 0.7, 20, "Eta(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BEta7550Canvas, BEta7550_, 1, 0, 0, kBlack, 0.7, 20, "Eta(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BEta7525Canvas, BEta7525_, 1, 0, 0, kBlack, 0.7, 20, "Eta(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BEta5025Canvas, BEta5025_, 1, 0, 0, kBlack, 0.7, 20, "Eta(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BEta3325Canvas, BEta3325_, 1, 0, 0, kBlack, 0.7, 20, "Eta(b)", .04, .04, 1, "", .04, .04, 1, false);
-
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPhi7575Canvas, BPhi7575_, 1, 0, 0, kBlack, 0.7, 20, "Phi(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPhi5050Canvas, BPhi5050_, 1, 0, 0, kBlack, 0.7, 20, "Phi(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPhi3333Canvas, BPhi3333_, 1, 0, 0, kBlack, 0.7, 20, "Phi(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPhi2525Canvas, BPhi2525_, 1, 0, 0, kBlack, 0.7, 20, "Phi(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPhi7550Canvas, BPhi7550_, 1, 0, 0, kBlack, 0.7, 20, "Phi(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPhi7525Canvas, BPhi7525_, 1, 0, 0, kBlack, 0.7, 20, "Phi(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPhi5025Canvas, BPhi5025_, 1, 0, 0, kBlack, 0.7, 20, "Phi(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPhi3325Canvas, BPhi3325_, 1, 0, 0, kBlack, 0.7, 20, "Phi(b)", .04, .04, 1, "", .04, .04, 1, false);
-
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BdR7575Canvas, BdR7575_, 1, 0, 0, kBlack, 0.7, 20, "dR(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BdR5050Canvas, BdR5050_, 1, 0, 0, kBlack, 0.7, 20, "dR(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BdR3333Canvas, BdR3333_, 1, 0, 0, kBlack, 0.7, 20, "dR(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BdR2525Canvas, BdR2525_, 1, 0, 0, kBlack, 0.7, 20, "dR(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BdR7550Canvas, BdR7550_, 1, 0, 0, kBlack, 0.7, 20, "dR(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BdR7525Canvas, BdR7525_, 1, 0, 0, kBlack, 0.7, 20, "dR(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BdR5025Canvas, BdR5025_, 1, 0, 0, kBlack, 0.7, 20, "dR(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BdR3325Canvas, BdR3325_, 1, 0, 0, kBlack, 0.7, 20, "dR(b)", .04, .04, 1, "", .04, .04, 1, false);
 
   VariousFunctions::formatAndDrawCanvasAndHist1D(APtCanvas, APt_, 1, 0, 0, kBlack, 0.7, 20, "Pt(A)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(AEtaCanvas,AEta_, 1, 0, 0, kBlack, 0.7, 20, "#eta(A)", .04, .04, 1, "", .04, .04, 1, false);
   VariousFunctions::formatAndDrawCanvasAndHist1D(DiTauDRCanvas, DiTauDR_, 1, 0, 0, kBlack, 0.7, 20, "dR(#tau #tau)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPtCanvas, BPt_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BEtaCanvas, BEta_, 1, 0, 0, kBlack, 0.7, 20, "#eta(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPhiCanvas, BPhi_, 1, 0, 0, kBlack, 0.7, 20, "#phi(b)", .04, .04, 1, "", .04, .04, 1, false);
+  VariousFunctions::formatAndDrawCanvasAndHist1D(BPtMatchCanvas, BPtMatch_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b)", .04, .04, 1, "", .04, .04, 1, false);
   VariousFunctions::formatAndDrawCanvasAndHist1D(ABDRCanvas, ABDR_, 1, 0, 0, kBlack, 0.7, 20, "dR(ab)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(MuPtOfTauMuTauHadCanvas, MuPtOfTauMuTauHad_, 1, 0, 0, kBlack, 0.7, 20, "Pt(mu)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BPtTauMuTauHadCanvas, BPtTauMuTauHad_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(DiBPtTauMuTauHadCanvas, DiBPtTauMuTauHad_, 1, 0, 0, kBlack, 0.7, 20, "Pt(bb)", .04, .04, 1, "", .04, .04, 1, false);
-  VariousFunctions::formatAndDrawCanvasAndHist1D(BRatioCanvas, BRatio_, 1, 0, 0, kBlack, 0.7, 20, "bRatio", .04, .04, 1, "", .04, .04, 1, false);
+  VariousFunctions::formatAndDrawCanvasAndHist1D(TauMuPtCanvas, TauMuPt_, 1, 0, 0, kBlack, 0.7, 20, "Pt(mu)", .04, .04, 1, "", .04, .04, 1, false);
+  VariousFunctions::formatAndDrawCanvasAndHist1D(BPtCanvas, BPt_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b)", .04, .04, 1, "", .04, .04, 1, false);
+  VariousFunctions::formatAndDrawCanvasAndHist1D(BPtHighCanvas, BPtHigh_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b High)", .04, .04, 1, "", .04, .04, 1, false);
+  VariousFunctions::formatAndDrawCanvasAndHist1D(BPtLowCanvas, BPtLow_, 1, 0, 0, kBlack, 0.7, 20, "Pt(b Low)", .04, .04, 1, "", .04, .04, 1, false);
+  VariousFunctions::formatAndDrawCanvasAndHist1D(DiBPtCanvas, DiBPt_, 1, 0, 0, kBlack, 0.7, 20, "Pt(bb)", .04, .04, 1, "", .04, .04, 1, false);
   VariousFunctions::formatAndDrawCanvasAndHist1D(DRbPartbRatioCanvas, DRbPartbRatio_, 1, 0, 0, kBlack, 0.7, 20, "dR(bjet bPart)", .04, .04, 1, "", .04, .04, 1, false);
   VariousFunctions::formatAndDrawCanvasAndHist1D(PtDiffbPartbRatioCanvas, PtDiffbPartbRatio_, 1, 0, 0, kBlack, 0.7, 20, "#Delta Pt(bjet bPart)", .04, .04, 1, "", .04, .04, 1, false);
   VariousFunctions::formatAndDrawCanvasAndHist1D(BMuPtCanvas, BMuPt_, 1, 0, 0, kBlack, 0.7, 20, "Pt(#mu_{b})", .04, .04, 1, "", .04, .04, 1, false);
+  VariousFunctions::formatAndDrawCanvasAndHist1D(AMassCanvas, AMass_, 1, 0, 0, kBlack, 0.7, 20, "M(a1)", .04, .04, 1, "", .04, .04, 1, false);
 
   //format the 2d plots and draw (canvas, hist, grid, log y, log z, color, size, style, xaxistitle, xtitlesize, xlabelsize, xtitleoffset, yaxistitle, ytitlesize, ylabelsize, ytitleoffset,
   			      // zAxisTitle, zTitleSize, zLabelSize, zTitleOffset)
@@ -861,80 +617,51 @@ std::cout << "<----------------Declared Canvases-------------->" << std::endl;
   VariousFunctions::formatAndDrawCanvasAndHist2D(DiTauDRVsAEtaCanvas, DiTauDRVsAEta_, 0, 0, 0, kBlack, 7, 20, "dR(#tau#tau)", .04, .04, 1.1, "#eta(A)", .04, .04, 1.6, "", .04, .04, 1.0);
   VariousFunctions::formatAndDrawCanvasAndHist2D(DiTauDRVsBPtLowCanvas, DiTauDRVsBPtLow_, 0, 0, 0, kBlack, 7, 20, "dR(#tau#tau)", .04, .04, 1.1, "Pt(bLow)", .04, .04, 1.6, "", .04, .04, 1.0);
   VariousFunctions::formatAndDrawCanvasAndHist2D(DiTauDRVsBPtHighCanvas, DiTauDRVsBPtHigh_, 0, 0, 0, kBlack, 7, 20, "dR(#tau#tau)", .04, .04, 1.1, "Pt(bHigh)", .04, .04, 1.6, "", .04, .04, 1.0);
+  VariousFunctions::formatAndDrawCanvasAndHist2D(DiTauDRVsBPtBestMatchCanvas, DiTauDRVsBPtBestMatch_, 0, 0, 0, kBlack, 7, 20, "dR(#tau#tau)", .04, .04, 1.1, "Pt(bHigh)", .04, .04, 1.6, "", .04, .04, 1.0);
+  VariousFunctions::formatAndDrawCanvasAndHist2D(DiTauDRVsBPt2ndBestMatchCanvas, DiTauDRVsBPt2ndBestMatch_, 0, 0, 0, kBlack, 7, 20, "dR(#tau#tau)", .04, .04, 1.1, "Pt(bHigh)", .04, .04, 1.6, "", .04, .04, 1.0);
   VariousFunctions::formatAndDrawCanvasAndHist2D(ABDRVsAPtCanvas, ABDRVsAPt_, 0, 0, 0, kBlack, 7, 20, "dR(ab)", .04, .04, 1.1, "Pt(A)", .04, .04, 1.6, "", .04, .04, 1.0);
   VariousFunctions::formatAndDrawCanvasAndHist2D(ABDRVsDiTauDRCanvas, ABDRVsDiTauDR_, 0, 0, 0, kBlack, 7, 20, "dR(ab)", .04, .04, 1.1, "dR(#tau#tau)", .04, .04, 1.6, "", .04, .04, 1.0);
 
   VariousFunctions::formatAndDrawCanvasAndHist2D(SumBRatioVsBPartBRatiodRCanvas, SumBRatioVsBPartBRatiodR_, 0, 0, 0, kBlack, 7, 20, "bRatio Sum", .04, .04, 1.1, "dR(bPart bRatio)", .04, .04, 1.6, "", .04, .04, 1.0);
+  VariousFunctions::formatAndDrawCanvasAndHist1D(BRatiosWithLargeDRCanvas, BRatiosWithLargeDR_, 0, 0, 0, kBlack, 7, 20, "bRatio", .04, .04, 1.1,  "", .04, .04, 1.0, false);
+
+  VariousFunctions::formatAndDrawCanvasAndHist1D(NEventsCanvas, NEvents_, 0, 0, 0, kBlack, 7, 20, "NEvents", .04, .04, 1.1,  "", .04, .04, 1.0, false);
 
 std::cout << "<----------------Formatted Canvases and Histos-------------->" << std::endl;
 
   //Write output file
   out_->cd();
-  AMPartCanvas.Write();
   BPtCutCanvas.Write();
-  BRatioCutCanvas.Write();
+  BPtMatchCutCanvas.Write();
   TauPtCanvas.Write();
-  TauEtaCanvas.Write();
-
-  BPt7575Canvas.Write();
-  BPt5050Canvas.Write();
-  BPt3333Canvas.Write();
-  BPt2525Canvas.Write();
-  BPt7550Canvas.Write();
-  BPt7525Canvas.Write();
-  BPt5025Canvas.Write();
-  BPt3325Canvas.Write();
-
-  BEta7575Canvas.Write();
-  BEta5050Canvas.Write();
-  BEta3333Canvas.Write();
-  BEta2525Canvas.Write();
-  BEta7550Canvas.Write();
-  BEta7525Canvas.Write();
-  BEta5025Canvas.Write();
-  BEta3325Canvas.Write();
-
-  BPhi7575Canvas.Write();
-  BPhi5050Canvas.Write();
-  BPhi3333Canvas.Write();
-  BPhi2525Canvas.Write();
-  BPhi7550Canvas.Write();
-  BPhi7525Canvas.Write();
-  BPhi5025Canvas.Write();
-  BPhi3325Canvas.Write();
-
-  BdR7575Canvas.Write();
-  BdR5050Canvas.Write();
-  BdR3333Canvas.Write();
-  BdR2525Canvas.Write();
-  BdR7550Canvas.Write();
-  BdR7525Canvas.Write();
-  BdR5025Canvas.Write();
-  BdR3325Canvas.Write();
 
   APtCanvas.Write();
-  AEtaCanvas.Write();
   DiTauDRCanvas.Write();
-  BPtCanvas.Write();
-  BEtaCanvas.Write();
-  BPhiCanvas.Write();
+  BPtMatchCanvas.Write();
   ABDRCanvas.Write();
-  MuPtOfTauMuTauHadCanvas.Write();
-  BPtTauMuTauHadCanvas.Write();
-  DiBPtTauMuTauHadCanvas.Write();
-  BRatioCanvas.Write();
+  TauMuPtCanvas.Write();
+  BPtCanvas.Write();
+  BPtHighCanvas.Write();
+  BPtLowCanvas.Write();
+  DiBPtCanvas.Write();
   DRbPartbRatioCanvas.Write();
   PtDiffbPartbRatioCanvas.Write();
   BMuPtCanvas.Write();
+  AMassCanvas.Write();
 
   DiTauDRVsAPtCanvas.Write();
   DiTauDRVsAEtaCanvas.Write();
   DiTauDRVsBPtLowCanvas.Write();
   DiTauDRVsBPtHighCanvas.Write();
+  DiTauDRVsBPtBestMatchCanvas.Write();
+  DiTauDRVsBPt2ndBestMatchCanvas.Write();
   ABDRVsAPtCanvas.Write();
   ABDRVsDiTauDRCanvas.Write();
 
   SumBRatioVsBPartBRatiodRCanvas.Write();
+  BRatiosWithLargeDRCanvas.Write();
+
+  NEventsCanvas.Write();
 
   out_->Write();
   out_->Close();
@@ -958,119 +685,52 @@ void BBAAnalyzer::reset(const bool doDelete)
 {
   if ((doDelete) && (out_ != NULL)) delete out_;
   out_ = NULL;
-  if ((doDelete) && (AMPart_ != NULL)) delete AMPart_;
-  AMPart_ = NULL;
   if ((doDelete) && (BPtCut_ != NULL)) delete BPtCut_;
   BPtCut_ = NULL;
-  if ((doDelete) && (BRatioCut_ != NULL)) delete BRatioCut_;
-  BRatioCut_ = NULL;
+  if ((doDelete) && (BPtMatchCut_ != NULL)) delete BPtMatchCut_;
+  BPtMatchCut_ = NULL;
   if ((doDelete) && (TauPt_ != NULL)) delete TauPt_;
   TauPt_ = NULL;
-  if ((doDelete) && (TauEta_ != NULL)) delete TauEta_;
-  TauEta_ = NULL;
-
-  if ((doDelete) && (BPt7575_ != NULL)) delete BPt7575_;
-  BPt7575_ = NULL;
-  if ((doDelete) && (BPt5050_ != NULL)) delete BPt5050_;
-  BPt5050_ = NULL;
-  if ((doDelete) && (BPt3333_ != NULL)) delete BPt3333_;
-  BPt3333_ = NULL;
-  if ((doDelete) && (BPt2525_ != NULL)) delete BPt2525_;
-  BPt2525_ = NULL;
-  if ((doDelete) && (BPt7550_ != NULL)) delete BPt7550_;
-  BPt7550_ = NULL;
-  if ((doDelete) && (BPt7525_ != NULL)) delete BPt7525_;
-  BPt7525_ = NULL;
-  if ((doDelete) && (BPt5025_ != NULL)) delete BPt5025_;
-  BPt5025_ = NULL;
-  if ((doDelete) && (BPt3325_ != NULL)) delete BPt3325_;
-  BPt3325_ = NULL;
-
-  if ((doDelete) && (BEta7575_ != NULL)) delete BEta7575_;
-  BEta7575_ = NULL;
-  if ((doDelete) && (BEta5050_ != NULL)) delete BEta5050_;
-  BEta5050_ = NULL;
-  if ((doDelete) && (BEta3333_ != NULL)) delete BEta3333_;
-  BEta3333_ = NULL;
-  if ((doDelete) && (BEta2525_ != NULL)) delete BEta2525_;
-  BEta2525_ = NULL;
-  if ((doDelete) && (BEta7550_ != NULL)) delete BEta7550_;
-  BEta7550_ = NULL;
-  if ((doDelete) && (BEta7525_ != NULL)) delete BEta7525_;
-  BEta7525_ = NULL;
-  if ((doDelete) && (BEta5025_ != NULL)) delete BEta5025_;
-  BEta5025_ = NULL;
-  if ((doDelete) && (BEta3325_ != NULL)) delete BEta3325_;
-  BEta3325_ = NULL;
-
-  if ((doDelete) && (BPhi7575_ != NULL)) delete BPhi7575_;
-  BPhi7575_ = NULL;
-  if ((doDelete) && (BPhi5050_ != NULL)) delete BPhi5050_;
-  BPhi5050_ = NULL;
-  if ((doDelete) && (BPhi3333_ != NULL)) delete BPhi3333_;
-  BPhi3333_ = NULL;
-  if ((doDelete) && (BPhi2525_ != NULL)) delete BPhi2525_;
-  BPhi2525_ = NULL;
-  if ((doDelete) && (BPhi7550_ != NULL)) delete BPhi7550_;
-  BPhi7550_ = NULL;
-  if ((doDelete) && (BPhi7525_ != NULL)) delete BPhi7525_;
-  BPhi7525_ = NULL;
-  if ((doDelete) && (BPhi5025_ != NULL)) delete BPhi5025_;
-  BPhi5025_ = NULL;
-  if ((doDelete) && (BPhi3325_ != NULL)) delete BPhi3325_;
-  BPhi3325_ = NULL;
-
-
- if ((doDelete) && (BdR7575_ != NULL)) delete BdR7575_;
- BdR7575_ = NULL; 
- if ((doDelete) && (BdR5050_ != NULL)) delete BdR5050_;
- BdR5050_ = NULL; 
- if ((doDelete) && (BdR3333_ != NULL)) delete BdR3333_;
- BdR3333_ = NULL; 
- if ((doDelete) && (BdR2525_ != NULL)) delete BdR2525_;
- BdR2525_ = NULL; 
- if ((doDelete) && (BdR7550_ != NULL)) delete BdR7550_;
- BdR7550_ = NULL; 
- if ((doDelete) && (BdR7525_ != NULL)) delete BdR7525_;
- BdR7525_ = NULL; 
- if ((doDelete) && (BdR5025_ != NULL)) delete BdR5025_;
- BdR5025_ = NULL; 
- if ((doDelete) && (BdR3325_ != NULL)) delete BdR3325_;
- BdR3325_ = NULL;
 
   if ((doDelete) && (APt_ != NULL)) delete APt_;
   APt_ = NULL;
-  if ((doDelete) && (AEta_ != NULL)) delete AEta_;
-  AEta_ = NULL;
   if ((doDelete) && (DiTauDR_ != NULL)) delete DiTauDR_;
   DiTauDR_ = NULL;
-  if ((doDelete) && (BPt_ != NULL)) delete BPt_;
-  BPt_ = NULL;
-  if ((doDelete) && (BEta_ != NULL)) delete BEta_;
-  BEta_ = NULL;
-  if ((doDelete) && (BPhi_ != NULL)) delete BPhi_;
-  BPhi_ = NULL;
+  if ((doDelete) && (BPtMatch_ != NULL)) delete BPtMatch_;
+  BPtMatch_ = NULL;
   if ((doDelete) && (ABDR_ != NULL)) delete ABDR_;
   ABDR_ = NULL;
-  if ((doDelete) && (MuPtOfTauMuTauHad_ != NULL)) delete MuPtOfTauMuTauHad_;
-  MuPtOfTauMuTauHad_ = NULL;
-  if ((doDelete) && (BPtTauMuTauHad_ != NULL)) delete BPtTauMuTauHad_;
-  BPtTauMuTauHad_ = NULL;
-  if ((doDelete) && (DiBPtTauMuTauHad_ != NULL)) delete DiBPtTauMuTauHad_;
-  DiBPtTauMuTauHad_ = NULL;
-  if ((doDelete) && (BRatio_ != NULL)) delete BRatio_;
-  BRatio_ = NULL;
+  if ((doDelete) && (TauMuPt_ != NULL)) delete TauMuPt_;
+  TauMuPt_ = NULL;
+  if ((doDelete) && (BPt_ != NULL)) delete BPt_;
+  BPt_ = NULL;
+  if ((doDelete) && (BPtHigh_ != NULL)) delete BPtHigh_;
+  BPtHigh_ = NULL;
+  if ((doDelete) && (BPtLow_ != NULL)) delete BPtLow_;
+  BPtLow_ = NULL;
+  if ((doDelete) && (DiBPt_ != NULL)) delete DiBPt_;
+  DiBPt_ = NULL;
   if ((doDelete) && (DRbPartbRatio_ != NULL)) delete DRbPartbRatio_;
   DRbPartbRatio_ = NULL;
   if ((doDelete) && (PtDiffbPartbRatio_ != NULL)) delete PtDiffbPartbRatio_;
   PtDiffbPartbRatio_ = NULL;
   if ((doDelete) && (BMuPt_ != NULL)) delete BMuPt_;
   BMuPt_ = NULL;
+  if ((doDelete) && (AMass_ != NULL)) delete AMass_;
+  AMass_ = NULL;
 
   if ((doDelete) && (DiTauDRVsAPt_ != NULL)) delete  DiTauDRVsAPt_;
   DiTauDRVsAPt_ = NULL;
   if ((doDelete) && (DiTauDRVsAEta_ != NULL)) delete DiTauDRVsAEta_;
   DiTauDRVsAEta_ = NULL;
+  if ((doDelete) && (DiTauDRVsBPtLow_ != NULL)) delete DiTauDRVsBPtLow_;
+  DiTauDRVsBPtLow_ = NULL;
+  if ((doDelete) && (DiTauDRVsBPtHigh_ != NULL)) delete DiTauDRVsBPtHigh_;
+  DiTauDRVsBPtHigh_ = NULL;
+  if ((doDelete) && (DiTauDRVsBPtBestMatch_ != NULL)) delete DiTauDRVsBPtBestMatch_;
+  DiTauDRVsBPtBestMatch_ = NULL;
+  if ((doDelete) && (DiTauDRVsBPt2ndBestMatch_ != NULL)) delete DiTauDRVsBPt2ndBestMatch_;
+  DiTauDRVsBPt2ndBestMatch_ = NULL;
   if ((doDelete) && (ABDRVsAPt_ != NULL)) delete ABDRVsAPt_;
   ABDRVsAPt_ = NULL;
   if ((doDelete) && (ABDRVsDiTauDR_ != NULL)) delete ABDRVsDiTauDR_;
@@ -1078,6 +738,12 @@ void BBAAnalyzer::reset(const bool doDelete)
 
   if ((doDelete) && (SumBRatioVsBPartBRatiodR_ != NULL)) delete SumBRatioVsBPartBRatiodR_;
   SumBRatioVsBPartBRatiodR_ = NULL;
+  if ((doDelete) && (BRatiosWithLargeDR_ != NULL)) delete BRatiosWithLargeDR_;
+  BRatiosWithLargeDR_ = NULL;
+
+  if ((doDelete) && (NEvents_ != NULL)) delete NEvents_;
+  NEvents_ = NULL;
+
 }//void BBAAnalyzer
 
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------

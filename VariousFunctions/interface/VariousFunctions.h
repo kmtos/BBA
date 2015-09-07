@@ -43,6 +43,10 @@ class VariousFunctions {
 
     //Orders 4 given values
     static double* orderFour(const double, double const, const double, const double);
+
+    //Finds all muons in a Ref and plots their pt in the given histogram
+    static void findAndPlotBMuons(const reco::GenParticleRef&, const int, TH1F*, const bool);
+
 };
 
 

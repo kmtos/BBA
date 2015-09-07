@@ -10,9 +10,9 @@ void rootMacro_P68_combine()
 {
   gStyle->SetOptStat(kFALSE);
 
-  TFile fileP8("/afs/cern.ch/user/k/ktos/BBA/CMSSW_7_1_11_patch2/src/BBA/Analyzer/BSUB/ggH_a9_10K_Events_v1_ReqTauPlots_MAY_28_v1/ggH_a9_10K_Events_v1_ReqTauPlots_MAY_28_v1.root");
-  TFile fileP6("/afs/cern.ch/user/k/ktos/CMSSW_5_3_11/src/ggH/Analyzer/BSUB/ggH_P6_ReqTauPlots_MAY_25_findIfInDaughterCheck.root");
-  TFile *outFile = new TFile("interface/combined_Histograms_for_P6_P8_MAY_25.root", "RECREATE");
+  TFile fileP8("/afs/cern.ch/user/k/ktos/BBA/CMSSW_7_1_11_patch2/src/BBA/Analyzer/BSUB/ggH_a9_300K_Events_v1_JUN_15_v1/ggH_a9_300K_Events_v1_JUN_15_v1.root");
+  TFile fileP6("/afs/cern.ch/user/k/ktos/CMSSW_5_3_11/src/ggH/Analyzer/BSUB/ggH_P6_MY_GEN_ErrorBars_JUN_15.root");
+  TFile *outFile = new TFile("interface/combined_Histograms_for_P6_P8_MY_GEN_JUN_9.root", "RECREATE");
 
 cout << "Files Created" << endl;
 
@@ -161,8 +161,8 @@ cout << "Canvases created" << endl;
 cout << "Attributes set." << endl;  
 
   APtPartBOTHCanvas.cd();
-  APtPartP8_->DrawNormalized();
-  APtPartP6_->DrawNormalized("SAME");
+  APtPartP6_->DrawNormalized();
+  APtPartP8_->DrawNormalized("SAME");
   legPt = new TLegend(0.7, 0.7, 0.9,0.9);
   legPt->AddEntry(APtPartP8_,"Pythia 8","f");
   legPt->AddEntry(APtPartP6_,"Pythia 6","f");
@@ -189,42 +189,42 @@ cout << "Attributes set." << endl;
   legPt->Draw();
 
   TauPtPartBOTHCanvas.cd();
-  TauPtPartP8_->DrawNormalized();
-  TauPtPartP6_->DrawNormalized("SAME");
+  TauPtPartP6_->DrawNormalized();
+  TauPtPartP8_->DrawNormalized("SAME");
   legPt->Draw();
 
   TauPt1PartBOTHCanvas.cd();
-  TauPt1PartP8_->DrawNormalized();
-  TauPt1PartP6_->DrawNormalized("SAME");
+  TauPt1PartP6_->DrawNormalized();
+  TauPt1PartP8_->DrawNormalized("SAME");
   legPt->Draw();
 
   TauPt2PartBOTHCanvas.cd();
-  TauPt2PartP8_->DrawNormalized();
-  TauPt2PartP6_->DrawNormalized("SAME");
+  TauPt2PartP6_->DrawNormalized();
+  TauPt2PartP8_->DrawNormalized("SAME");
   legPt->Draw();
 
   TauPt3PartBOTHCanvas.cd();
-  TauPt3PartP8_->DrawNormalized();
-  TauPt3PartP6_->DrawNormalized("SAME");
+  TauPt3PartP6_->DrawNormalized();
+  TauPt3PartP8_->DrawNormalized("SAME");
   legPt->Draw();
 
   TauPt4PartBOTHCanvas.cd();
-  TauPt4PartP8_->DrawNormalized();
-  TauPt4PartP6_->DrawNormalized("SAME");
+  TauPt4PartP6_->DrawNormalized();
+  TauPt4PartP8_->DrawNormalized("SAME");
   legPt->Draw();
 
   TauPtHighPartBOTHCanvas.cd();
-  TauPtHighPartP8_->DrawNormalized();
-  TauPtHighPartP6_->DrawNormalized("SAME");
+  TauPtHighPartP6_->DrawNormalized();
+  TauPtHighPartP8_->DrawNormalized("SAME");
   legPt->Draw();
 
   TauPtLowPartBOTHCanvas.cd();
-  TauPtLowPartP8_->DrawNormalized();
-  TauPtLowPartP6_->DrawNormalized("SAME");
+  TauPtLowPartP6_->DrawNormalized();
+  TauPtLowPartP8_->DrawNormalized("SAME");
   legPt->Draw();
 
   TauDecayModeBOTHCanvas.cd();
-  TauDecayModeP8_->DrawNormalized();
+  TauDecayModeP8_->DrawNormalized("");
   TauDecayModeP6_->DrawNormalized("SAME");
   legPt->Draw();
 
@@ -247,7 +247,6 @@ cout << "Attributes set." << endl;
   TauPhiP8_->DrawNormalized();
   TauPhiP6_->DrawNormalized("SAME");
   legPt->Draw();
-
 
 cout << "Histograms Drawn" << endl;
 

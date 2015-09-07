@@ -8,7 +8,7 @@ source /afs/cern.ch/cms/caf/setup.sh
 mv /afs/cern.ch/user/k/ktos/BBA/CMSSW_7_1_11_patch2/src/BBA/Generation/DIRNAME/SCRIPTNAME_JOBNUM.* . 
 cmsRun SCRIPTNAME_JOBNUM.py
 cmsStage -f NMSSM_a9_ggH_JOBNUM.root /store/user/ktos/DIRNAME
-rm SCRIPTNAME_JOBNUM.*  NMSSM_a9_ggH_JOBNUM.root*
+rm SCRIPTNAME_JOBNUM.*  NMSSM_a15_BBA_JOBNUM.root*
 if [ -e RandomEngineState_JOBNUM.log ]
     then
     rm RandomEngineState_JOBNUM.log*
